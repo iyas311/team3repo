@@ -16,6 +16,11 @@ services:
       RABBITMQ_DEFAULT_PASS: guest
     networks:
       - team3-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   # ==========================================
   # DATABASES
@@ -51,6 +56,11 @@ services:
       - event_postgres_data:/var/lib/postgresql/data
     networks:
       - team3-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER_EVENT:-event_user} -d event_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   booking-db:
     image: mysql:8.0
@@ -65,6 +75,11 @@ services:
       - booking_db_data:/var/lib/mysql
     networks:
       - team3-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$${MYSQL_ROOT_PASSWORD_BOOKING:-password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   payment-db:
     image: mysql:8.3
@@ -80,6 +95,11 @@ services:
       - payment_mysql_data:/var/lib/mysql
     networks:
       - team3-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$${MYSQL_ROOT_PASSWORD_PAYMENT:-root}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   ticket-db:
     image: postgres:15
@@ -94,6 +114,11 @@ services:
       - ticket_db_data:/var/lib/postgresql/data
     networks:
       - team3-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER_TICKET:-postgres} -d ticket_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   notification-db:
     image: postgres:15
@@ -106,6 +131,11 @@ services:
       - "5434:5432"
     networks:
       - team3-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER_NOTIFICATION:-user} -d notifications"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ==========================================
   # MICROSERVICES
@@ -129,7 +159,7 @@ services:
       user-db:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     networks:
       - team3-network
 
@@ -145,7 +175,8 @@ services:
       - SECRET_KEY=team3_super_secret_jwt_key_2026
       - ALGORITHM=HS256
     depends_on:
-      - event-db
+      event-db:
+        condition: service_healthy
     restart: always
     networks:
       - team3-network
@@ -168,8 +199,10 @@ services:
       - RABBITMQ_HOST=rabbitmq
       - JWT_SECRET=team3_super_secret_jwt_key_2026
     depends_on:
-      - booking-db
-      - rabbitmq
+      booking-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - team3-network
 
@@ -185,8 +218,10 @@ services:
     ports:
       - "8004:8000"
     depends_on:
-      - payment-db
-      - rabbitmq
+      payment-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - team3-network
 
@@ -202,8 +237,10 @@ services:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
       - SECRET_KEY=team3_super_secret_jwt_key_2026
     depends_on:
-      - ticket-db
-      - rabbitmq
+      ticket-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     volumes:
       - ./Ticket-Generator/qr_codes:/service/qr_codes
     networks:
@@ -217,8 +254,10 @@ services:
     ports:
       - "8006:8000"
     depends_on:
-      - rabbitmq
-      - notification-db
+      rabbitmq:
+        condition: service_healthy
+      notification-db:
+        condition: service_healthy
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER_NOTIFICATION:-user}:${POSTGRES_PASSWORD_NOTIFICATION:-password}@notification-db:5432/notifications
       - RABBITMQ_HOST=rabbitmq
