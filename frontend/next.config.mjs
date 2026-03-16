@@ -1,53 +1,44 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
+  // NOTE: 'output: standalone' was removed because it conflicts with npm start + rewrites.
+  // When standalone mode is enabled, Next.js sends redirect headers to the
+  // rewrite destination instead of proxying transparently, causing the browser
+  // to try reaching Docker-internal hostnames (e.g. event-service:8000) directly.
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
 
-  // Proxy API calls from the browser/Next.js server to backend services.
-  // This makes the frontend work whether accessed via Nginx (port 80) or
-  // directly on port 3000.
+  // Proxy API calls from the Next.js server to backend containers.
+  // This makes the frontend work when accessed directly on port 3000.
   async rewrites() {
-    const userServiceUrl =
-      process.env.USER_SERVICE_INTERNAL_URL || "http://user-service:8000";
-    const eventServiceUrl =
-      process.env.EVENT_SERVICE_INTERNAL_URL || "http://event-service:8000";
-    const bookingServiceUrl =
-      process.env.BOOKING_SERVICE_INTERNAL_URL || "http://booking-service:8000";
-    const paymentServiceUrl =
-      process.env.PAYMENT_SERVICE_INTERNAL_URL || "http://payment-service:8000";
-    const ticketServiceUrl =
-      process.env.TICKET_SERVICE_INTERNAL_URL || "http://ticket-service:8000";
-
     return [
       // User Service
       {
         source: "/users/:path*",
-        destination: `${userServiceUrl}/users/:path*`,
+        destination: "http://user-service:8000/users/:path*",
       },
       // Event Service
       {
         source: "/api/v1/:path*",
-        destination: `${eventServiceUrl}/api/v1/:path*`,
+        destination: "http://event-service:8000/api/v1/:path*",
       },
       // Booking Service
       {
         source: "/bookings/:path*",
-        destination: `${bookingServiceUrl}/bookings/:path*`,
+        destination: "http://booking-service:8000/bookings/:path*",
       },
       {
         source: "/bookings",
-        destination: `${bookingServiceUrl}/bookings`,
+        destination: "http://booking-service:8000/bookings",
       },
       // Payment Service
       {
         source: "/payments/:path*",
-        destination: `${paymentServiceUrl}/payments/:path*`,
+        destination: "http://payment-service:8000/payments/:path*",
       },
       // Ticket Service
       {
         source: "/tickets/:path*",
-        destination: `${ticketServiceUrl}/tickets/:path*`,
+        destination: "http://ticket-service:8000/tickets/:path*",
       },
     ];
   },
