@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pika
+psycopg2-binary
+sqlalchemy
+python-dotenv
+# pip install -r requirements.txt

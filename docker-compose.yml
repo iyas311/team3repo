@@ -1,0 +1,278 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # MESSAGE BROKER
+  # ==========================================
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: shared-rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - team3-network
+
+  # ==========================================
+  # DATABASES
+  # ==========================================
+  user-db:
+    image: mysql:8.0
+    container_name: user-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_USERS:-root}
+      MYSQL_DATABASE: users
+    ports:
+      - "3306:3306"
+    networks:
+      - team3-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  event-db:
+    image: postgres:15-alpine
+    container_name: event-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER_EVENT:-event_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_EVENT:-event_pass}
+      POSTGRES_DB: event_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - event_postgres_data:/var/lib/postgresql/data
+    networks:
+      - team3-network
+
+  booking-db:
+    image: mysql:8.0
+    container_name: booking-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_BOOKING:-password}
+      MYSQL_DATABASE: booking_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - booking_db_data:/var/lib/mysql
+    networks:
+      - team3-network
+
+  payment-db:
+    image: mysql:8.3
+    container_name: payment-db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_PAYMENT:-root}
+      MYSQL_DATABASE: payment_service
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3308:3306"
+    volumes:
+      - payment_mysql_data:/var/lib/mysql
+    networks:
+      - team3-network
+
+  ticket-db:
+    image: postgres:15
+    container_name: ticket-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER_TICKET:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_TICKET:-postgrespassword}
+      POSTGRES_DB: ticket_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - ticket_db_data:/var/lib/postgresql/data
+    networks:
+      - team3-network
+
+  notification-db:
+    image: postgres:15
+    container_name: notification-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER_NOTIFICATION:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_NOTIFICATION:-password}
+      POSTGRES_DB: notifications
+    ports:
+      - "5434:5432"
+    networks:
+      - team3-network
+
+  # ==========================================
+  # MICROSERVICES
+  # ==========================================
+  user-service:
+    build: 
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    restart: on-failure
+    ports:
+      - "8001:8000"
+    environment:
+      - DB_HOST=user-db
+      - DB_USER=root
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD_USERS:-root}
+      - DB_NAME=users
+      - JWT_SECRET=team3_super_secret_jwt_key_2026
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      user-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - team3-network
+
+  event-service:
+    build: 
+      context: ./EventService
+      dockerfile: Dockerfile
+    container_name: event-service
+    ports:
+      - "8002:8000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER_EVENT:-event_user}:${POSTGRES_PASSWORD_EVENT:-event_pass}@event-db:5432/event_db
+      - SECRET_KEY=team3_super_secret_jwt_key_2026
+      - ALGORITHM=HS256
+    depends_on:
+      - event-db
+    restart: always
+    networks:
+      - team3-network
+
+  booking-service:
+    build: 
+      context: ./Bookingservice
+      dockerfile: Dockerfile
+    container_name: booking-service
+    restart: always
+    ports:
+      - "8003:8000"
+    environment:
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=${MYSQL_ROOT_PASSWORD_BOOKING:-password}
+      - MYSQL_HOST=booking-db
+      - MYSQL_DB=booking_db
+      - EVENT_SERVICE_URL=http://event-service:8000/api/v1/events
+      - PAYMENT_SERVICE_URL=http://payment-service:8000/payments
+      - RABBITMQ_HOST=rabbitmq
+      - JWT_SECRET=team3_super_secret_jwt_key_2026
+    depends_on:
+      - booking-db
+      - rabbitmq
+    networks:
+      - team3-network
+
+  payment-service:
+    build: 
+      context: ./Payment
+      dockerfile: Dockerfile
+    container_name: payment-service
+    environment:
+      - DATABASE_URL=mysql+pymysql://user:password@payment-db:3306/payment_service
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - SECRET_KEY=team3_super_secret_jwt_key_2026
+    ports:
+      - "8004:8000"
+    depends_on:
+      - payment-db
+      - rabbitmq
+    networks:
+      - team3-network
+
+  ticket-service:
+    build: 
+      context: ./Ticket-Generator
+      dockerfile: Dockerfile
+    container_name: ticket-service
+    ports:
+      - "8005:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER_TICKET:-postgres}:${POSTGRES_PASSWORD_TICKET:-postgrespassword}@ticket-db:5432/ticket_db
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - SECRET_KEY=team3_super_secret_jwt_key_2026
+    depends_on:
+      - ticket-db
+      - rabbitmq
+    volumes:
+      - ./Ticket-Generator/qr_codes:/service/qr_codes
+    networks:
+      - team3-network
+
+  notification-service:
+    build: 
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    ports:
+      - "8006:8000"
+    depends_on:
+      - rabbitmq
+      - notification-db
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER_NOTIFICATION:-user}:${POSTGRES_PASSWORD_NOTIFICATION:-password}@notification-db:5432/notifications
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_QUEUE=notifications
+      - EMAIL_USER=${EMAIL_USER:-}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD:-}
+    networks:
+      - team3-network
+
+  # ==========================================
+  # FRONTEND
+  # ==========================================
+  frontend-ui:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend-ui
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_USER_SERVICE_URL=/users
+      - NEXT_PUBLIC_EVENT_SERVICE_URL=/api/v1
+      - NEXT_PUBLIC_BOOKING_SERVICE_URL=/bookings
+      - NEXT_PUBLIC_PAYMENT_SERVICE_URL=/payments
+      - NEXT_PUBLIC_TICKET_SERVICE_URL=/tickets
+    networks:
+      - team3-network
+
+  # ==========================================
+  # REVERSE PROXY (NGINX)
+  # ==========================================
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend-ui
+      - user-service
+      - event-service
+      - booking-service
+      - payment-service
+      - ticket-service
+    networks:
+      - team3-network
+
+volumes:
+  event_postgres_data:
+  booking_db_data:
+  payment_mysql_data:
+  ticket_db_data:
+
+networks:
+  team3-network:
+    driver: bridge

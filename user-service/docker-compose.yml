@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  userservice-db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: users
+    ports:
+      - "3306:3306"
+    networks:
+      - user-network
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: always
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - user-network
+
+  userservice-app:
+    build: .
+    restart: on-failure
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=userservice-db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=users
+      - JWT_SECRET=my_shared_super_secret_key_change_in_prod
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      userservice-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - user-network
+
+networks:
+  user-network:
+    driver: bridge

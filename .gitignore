@@ -1,0 +1,20 @@
+# Passwords and Secrets
+.env
+secret.yaml
+
+# Node/React
+node_modules/
+.next/
+out/
+build/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+env/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
