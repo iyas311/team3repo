@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import LogoutButton from './LogoutButton'
 
 export const metadata: Metadata = {
   title: 'Team 3 Interactive Platform',
@@ -21,17 +22,7 @@ export default function RootLayout({
               <a href="/" className="hover:text-primary transition">Events</a>
               {/* <a href="/bookings" className="hover:text-primary transition">Bookings</a> */}
               <a href="/login" className="hover:text-primary transition">Login / Register</a>
-              <button 
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    localStorage.removeItem('token');
-                    window.location.href = '/login';
-                  }
-                }} 
-                className="text-red-400 hover:text-red-300 transition text-sm"
-              >
-                Logout
-              </button>
+              <LogoutButton />
             </div>
           </nav>
         </header>
