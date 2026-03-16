@@ -8,8 +8,8 @@ from . import models, schemas, database, auth, rabbitmq
 
 router = APIRouter()
 
-EVENT_SERVICE_URL = os.getenv("EVENT_SERVICE_URL", "http://event-service:8001/events")
-PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://payment-service:8002/payments")
+EVENT_SERVICE_URL = os.getenv("EVENT_SERVICE_URL", "http://event-service:8000/api/v1/events")
+PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://payment-service:8000/payments")
 
 @router.post("/bookings", response_model=schemas.Booking, status_code=status.HTTP_201_CREATED)
 def create_booking(

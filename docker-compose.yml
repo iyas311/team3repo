@@ -37,7 +37,7 @@ services:
     networks:
       - team3-network
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot" ]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$${MYSQL_ROOT_PASSWORD_USERS:-root}" ]
       interval: 10s
       timeout: 5s
       retries: 5

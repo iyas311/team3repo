@@ -99,7 +99,6 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(database.get_d
             body=json.dumps({
                 "type": "user.registered",
                 "id": new_user.id,
-                "id": new_user.id,
                 "name": new_user.name,
                 "email": new_user.email,
                 "role": new_user.role

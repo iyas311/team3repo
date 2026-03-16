@@ -8,9 +8,9 @@ class Payment(Base):
     __tablename__ = "payments"
 
     id = Column(Integer, primary_key=True, index=True)
-    booking_id = Column(String, index=True)
-    user_id = Column(String, index=True)
-    event_id = Column(String, index=True)
+    booking_id = Column(String(255), index=True)
+    user_id = Column(String(255), index=True)
+    event_id = Column(String(255), index=True)
     amount = Column(Float)
-    status = Column(String, default="pending")
+    status = Column(String(50), default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
