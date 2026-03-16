@@ -1,6 +1,4 @@
-# Passwords and Secrets
-.env
-secret.yaml
+
 
 # Node/React
 node_modules/
