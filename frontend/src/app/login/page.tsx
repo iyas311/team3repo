@@ -10,53 +10,64 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     try {
       if (isLogin) {
-        // Use OAuth2 Form Data for /login if needed, but we'll try JSON first.
-        // Actually, OAuth2PasswordRequestForm requires form-data with 'username' and 'password'
-        const formData = new URLSearchParams();
-        formData.append("username", email); // Swagger usually maps username to email
-        formData.append("password", password);
-
+        // user-service /users/login accepts JSON {email, password}
         const res = await fetch("/users/login", {
           method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
         });
-        
-        // If 4XX/5XX, let's try JSON just in case the backend uses custom JSON 
+
         if (!res.ok) {
-           const jsonRes = await fetch("/users/login", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email, password }),
-           });
-           if (!jsonRes.ok) throw new Error("Login failed");
-           const data = await jsonRes.json();
-           localStorage.setItem("token", data.access_token);
-        } else {
-           const data = await res.json();
-           localStorage.setItem("token", data.access_token);
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Invalid email or password");
         }
-        
+
+        const data = await res.json();
+        localStorage.setItem("token", data.access_token);
         router.push("/");
       } else {
-        // Register relies on JSON
+        // Register: send name, email, password, role (default attendee)
         const res = await fetch("/users/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password }),
+          body: JSON.stringify({ name, email, password, role: "attendee" }),
         });
-        if (!res.ok) throw new Error("Registration failed");
-        setIsLogin(true); // Switch to login
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Registration failed");
+        }
+
+        // Auto-login after successful registration
+        const loginRes = await fetch("/users/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (loginRes.ok) {
+          const data = await loginRes.json();
+          localStorage.setItem("token", data.access_token);
+          router.push("/");
+        } else {
+          // Registration succeeded but auto-login failed — go to login form
+          setIsLogin(true);
+          setError("Registered! Please log in now.");
+        }
       }
     } catch (err: any) {
       setError(err.message || "An error occurred");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -66,13 +77,13 @@ export default function LoginPage() {
         <h2 className="text-3xl font-bold mb-6 text-center">
           {isLogin ? "Welcome Back" : "Create Account"}
         </h2>
-        {error && <div className="bg-red-500/20 text-red-500 p-3 rounded mb-4">{error}</div>}
-        
+        {error && <div className={`p-3 rounded mb-4 text-sm ${error.startsWith("Registered") ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-500"}`}>{error}</div>}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {!isLogin && (
             <div>
               <label className="block text-sm font-medium mb-1">Name</label>
-              <input 
+              <input
                 type="text" required value={name} onChange={(e) => setName(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-primary"
               />
@@ -80,26 +91,30 @@ export default function LoginPage() {
           )}
           <div>
             <label className="block text-sm font-medium mb-1">Email</label>
-            <input 
+            <input
               type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-primary"
             />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Password</label>
-            <input 
+            <input
               type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-primary"
             />
           </div>
-          <button type="submit" className="w-full bg-primary text-white font-bold py-2 rounded-lg hover:bg-primary/80 transition">
-            {isLogin ? "Login" : "Register"}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary text-white font-bold py-2 rounded-lg hover:bg-primary/80 transition disabled:opacity-50"
+          >
+            {loading ? "Please wait..." : isLogin ? "Login" : "Register"}
           </button>
         </form>
-        
+
         <p className="mt-4 text-center text-slate-400">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <button onClick={() => setIsLogin(!isLogin)} className="text-primary hover:underline">
+          <button onClick={() => { setIsLogin(!isLogin); setError(""); }} className="text-primary hover:underline">
             {isLogin ? "Sign Up" : "Log In"}
           </button>
         </p>
