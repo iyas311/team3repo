@@ -8,6 +8,7 @@ router = APIRouter()
 @router.post("/events/", response_model=schemas.EventResponse, status_code=status.HTTP_201_CREATED)
 def create_event(event: schemas.EventCreate, db: Session = Depends(database.get_db), current_user: schemas.TokenData = Depends(auth.get_current_user)):
     # Using model_dump() for pydantic v2
+    # Using model_dump() for pydantic v2
     new_event = models.Event(**event.model_dump(), owner_id=current_user.user_id)
     db.add(new_event)
     db.commit()

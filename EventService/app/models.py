@@ -6,9 +6,11 @@ class Event(Base):
     __tablename__ = "events"
 
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, index=True, nullable=False)
+    name = Column(String, index=True, nullable=False)
     description = Column(Text, nullable=True)
     location = Column(String, nullable=False)
+    price = Column(Integer, nullable=False, default=0)
+    category = Column(String, nullable=False, default="General")
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=False)
     capacity = Column(Integer, nullable=False, default=0)

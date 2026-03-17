@@ -4,9 +4,11 @@ from typing import Optional, List
 
 # --- Event Schemas ---
 class EventBase(BaseModel):
-    title: str
+    name: str
     description: Optional[str] = None
     location: str
+    price: int = 0
+    category: str = "General"
     start_time: datetime
     end_time: datetime
     capacity: int = 0
@@ -16,9 +18,11 @@ class EventCreate(EventBase):
     pass
 
 class EventUpdate(BaseModel):
-    title: Optional[str] = None
+    name: Optional[str] = None
     description: Optional[str] = None
     location: Optional[str] = None
+    price: Optional[int] = None
+    category: Optional[str] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     capacity: Optional[int] = None
