@@ -20,7 +20,7 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        const res = await fetch("/users/login", {
+        const res = await fetch("/proxy/users/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
@@ -36,7 +36,7 @@ export default function LoginPage() {
         // Force a layout refresh to show nav links
         window.location.href = "/";
       } else {
-        const res = await fetch("/users/register", {
+        const res = await fetch("/proxy/users/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, email, password, role: "attendee" }),
@@ -47,7 +47,7 @@ export default function LoginPage() {
           throw new Error(errData.detail || "Registration failed");
         }
 
-        const loginRes = await fetch("/users/login", {
+        const loginRes = await fetch("/proxy/users/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),

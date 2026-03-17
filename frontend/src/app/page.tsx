@@ -16,7 +16,7 @@ export default function Home() {
     setToken(storedToken);
 
     // Fetch Events
-    fetch("/api/v1/events/")
+    fetch("/proxy/api/v1/events/")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setEvents(data);
@@ -38,7 +38,7 @@ export default function Home() {
     setBookingInProgress(eventId);
 
     try {
-      const res = await fetch("/bookings", {
+      const res = await fetch("/proxy/bookings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

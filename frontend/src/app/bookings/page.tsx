@@ -29,7 +29,7 @@ export default function BookingsPage() {
 
       try {
         // 1. Get User Profile
-        const profileRes = await fetch("/users/profile", {
+        const profileRes = await fetch("/proxy/users/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -38,7 +38,7 @@ export default function BookingsPage() {
         const userId = profile.id;
 
         // 2. Get Bookings
-        const bookingsRes = await fetch(`/bookings/${userId}`, {
+        const bookingsRes = await fetch(`/proxy/bookings/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -46,8 +46,8 @@ export default function BookingsPage() {
         const bookingsData: Booking[] = await bookingsRes.json();
 
         // 3. Enrich with Event Names (Optional but better UX)
-        // Fetch all events for name mapping
-        const eventsRes = await fetch("/api/v1/events/");
+        // 3. Enrich with Event Names (Event Service)
+        const eventsRes = await fetch("/proxy/api/v1/events/");
         if (eventsRes.ok) {
           const eventsData = await eventsRes.json();
           const eventsMap = new Map();

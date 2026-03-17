@@ -268,7 +268,7 @@ services:
       - team3-network
 
   # ==========================================
-  # FRONTEND
+  # FRONTEND (Exposed directly, replacing Nginx)
   # ==========================================
   frontend-ui:
     build:
@@ -283,26 +283,6 @@ services:
       - NEXT_PUBLIC_BOOKING_SERVICE_URL=/bookings
       - NEXT_PUBLIC_PAYMENT_SERVICE_URL=/payments
       - NEXT_PUBLIC_TICKET_SERVICE_URL=/tickets
-    networks:
-      - team3-network
-
-  # ==========================================
-  # REVERSE PROXY (NGINX)
-  # ==========================================
-  nginx:
-    image: nginx:alpine
-    container_name: nginx-proxy
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - frontend-ui
-      - user-service
-      - event-service
-      - booking-service
-      - payment-service
-      - ticket-service
     networks:
       - team3-network
 

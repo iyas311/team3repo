@@ -28,7 +28,7 @@ export default function TicketsPage() {
 
       try {
         // 1. Get User Profile
-        const profileRes = await fetch("/users/profile", {
+        const profileRes = await fetch("/proxy/users/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -37,7 +37,7 @@ export default function TicketsPage() {
         const userId = profile.id;
 
         // 2. Get Tickets
-        const ticketsRes = await fetch(`/tickets/user/${userId}`, {
+        const ticketsRes = await fetch(`/proxy/tickets/user/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -45,7 +45,7 @@ export default function TicketsPage() {
         const ticketsData: Ticket[] = await ticketsRes.json();
 
         // 3. Enrich with Event Names
-        const eventsRes = await fetch("/api/v1/events/");
+        const eventsRes = await fetch("/proxy/api/v1/events/");
         if (eventsRes.ok) {
           const eventsData = await eventsRes.json();
           const eventsMap = new Map();
