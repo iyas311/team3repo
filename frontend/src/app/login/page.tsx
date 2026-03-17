@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,7 +20,6 @@ export default function LoginPage() {
 
     try {
       if (isLogin) {
-        // user-service /users/login accepts JSON {email, password}
         const res = await fetch("/users/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -33,9 +33,9 @@ export default function LoginPage() {
 
         const data = await res.json();
         localStorage.setItem("token", data.access_token);
-        router.push("/");
+        // Force a layout refresh to show nav links
+        window.location.href = "/";
       } else {
-        // Register: send name, email, password, role (default attendee)
         const res = await fetch("/users/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -47,7 +47,6 @@ export default function LoginPage() {
           throw new Error(errData.detail || "Registration failed");
         }
 
-        // Auto-login after successful registration
         const loginRes = await fetch("/users/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -57,9 +56,8 @@ export default function LoginPage() {
         if (loginRes.ok) {
           const data = await loginRes.json();
           localStorage.setItem("token", data.access_token);
-          router.push("/");
+          window.location.href = "/";
         } else {
-          // Registration succeeded but auto-login failed — go to login form
           setIsLogin(true);
           setError("Registered! Please log in now.");
         }
@@ -72,52 +70,82 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh]">
-      <div className="w-full max-w-md bg-slate-800/50 p-8 rounded-2xl border border-slate-700">
-        <h2 className="text-3xl font-bold mb-6 text-center">
-          {isLogin ? "Welcome Back" : "Create Account"}
-        </h2>
-        {error && <div className={`p-3 rounded mb-4 text-sm ${error.startsWith("Registered") ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-500"}`}>{error}</div>}
+    <div className="flex flex-col items-center justify-center min-h-[80vh] relative">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/20 blur-[100px] rounded-full -z-10 animate-pulse"></div>
+      
+      <div className="w-full max-w-lg bg-slate-900/40 backdrop-blur-xl p-10 md:p-14 rounded-[40px] border border-slate-800 shadow-2xl relative">
+        <div className="text-center mb-10">
+           <Link href="/" className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent mb-6 inline-block">Team3</Link>
+           <h2 className="text-4xl font-black mb-3">
+             {isLogin ? "Welcome Back" : "Join the Elite"}
+           </h2>
+           <p className="text-slate-400 text-sm font-medium">
+             {isLogin ? "Enter your credentials to access your dashboard." : "Create your account and start booking exclusive events."}
+           </p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className={`p-4 rounded-2xl mb-8 text-sm font-bold flex items-center space-x-3 ${
+            error.startsWith("Registered") ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-500 border border-red-500/20"
+          }`}>
+             <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+             <span>{error}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
           {!isLogin && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Full Name</label>
               <input
                 type="text" required value={name} onChange={(e) => setName(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-primary"
+                placeholder="John Doe"
+                className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl px-6 py-4 focus:outline-none focus:border-primary transition-all placeholder:text-slate-700"
               />
             </div>
           )}
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Email Address</label>
             <input
               type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-primary"
+              placeholder="john@example.com"
+              className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl px-6 py-4 focus:outline-none focus:border-primary transition-all placeholder:text-slate-700"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">Password</label>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Password</label>
             <input
               type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-primary"
+              placeholder="••••••••"
+              className="w-full bg-slate-950/50 border border-slate-800 rounded-2xl px-6 py-4 focus:outline-none focus:border-primary transition-all placeholder:text-slate-700"
             />
           </div>
+          
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-white font-bold py-2 rounded-lg hover:bg-primary/80 transition disabled:opacity-50"
+            className="w-full bg-primary text-white font-black py-5 rounded-2xl hover:bg-primary/90 transition-all hover:scale-[1.02] shadow-xl shadow-primary/20 disabled:opacity-50 disabled:hover:scale-100"
           >
-            {loading ? "Please wait..." : isLogin ? "Login" : "Register"}
+            {loading ? "AUTHENTICATING..." : isLogin ? "LOG IN NOW" : "CREATE ACCOUNT"}
           </button>
         </form>
 
-        <p className="mt-4 text-center text-slate-400">
-          {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <button onClick={() => { setIsLogin(!isLogin); setError(""); }} className="text-primary hover:underline">
-            {isLogin ? "Sign Up" : "Log In"}
-          </button>
-        </p>
+        <div className="mt-10 pt-8 border-t border-slate-800/50 text-center">
+          <p className="text-slate-500 text-sm">
+            {isLogin ? "Don't have an account? " : "Already a member? "}
+            <button 
+              onClick={() => { setIsLogin(!isLogin); setError(""); }} 
+              className="text-primary font-black hover:underline underline-offset-4 ml-1"
+            >
+              {isLogin ? "Sign Up" : "Log In"}
+            </button>
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-12 text-slate-600 text-[10px] font-bold uppercase tracking-[0.2em] flex space-x-8">
+         <span className="cursor-pointer hover:text-slate-400 transition">Privacy Policy</span>
+         <span className="cursor-pointer hover:text-slate-400 transition">Terms of Service</span>
       </div>
     </div>
   );
