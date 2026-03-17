@@ -9,8 +9,12 @@ export async function proxyToService(
     serviceBaseUrl: string,
     targetPath: string
 ): Promise<NextResponse> {
+    // If the original request had a trailing slash, preserve it
+    const hasTrailingSlash = req.nextUrl.pathname.endsWith('/');
+    const sanitizedTargetPath = targetPath.endsWith('/') ? targetPath : (hasTrailingSlash ? `${targetPath}/` : targetPath);
+    
     const searchParams = req.nextUrl.search;
-    const targetUrl = `${serviceBaseUrl}${targetPath}${searchParams}`;
+    const targetUrl = `${serviceBaseUrl}${sanitizedTargetPath}${searchParams}`;
 
     // Forward relevant headers, strip hop-by-hop headers
     const forwardHeaders = new Headers();
@@ -22,25 +26,48 @@ export async function proxyToService(
     });
 
     const hasBody = req.method !== 'GET' && req.method !== 'HEAD';
-    const body = hasBody ? await req.text() : undefined;
+    const body = hasBody ? req.body : undefined;
+    
+    // If forwarding a body, we must let fetch handle the content-type but preserve it
+    const fetchOptions: RequestInit = {
+        method: req.method,
+        headers: forwardHeaders,
+        body: body as any,
+        // @ts-ignore
+        duplex: hasBody ? 'half' : undefined,
+    };
 
     try {
-        const upstream = await fetch(targetUrl, {
-            method: req.method,
-            headers: forwardHeaders,
-            body,
-        });
+        const upstream = await fetch(targetUrl, fetchOptions);
 
         // Forward response headers, strip problematic ones
         const resHeaders = new Headers();
         upstream.headers.forEach((value, key) => {
             const lower = key.toLowerCase();
             if (!['transfer-encoding', 'connection', 'keep-alive'].includes(lower)) {
-                resHeaders.set(key, value);
+                // Special handling for Location header to prevent internal URL leakage
+                if (lower === 'location' && value.includes('://')) {
+                    try {
+                        const url = new URL(value);
+                        let newPath = url.pathname + url.search;
+                        // Ensure the redirect stays behind our /proxy prefix
+                        if (!newPath.startsWith('/proxy')) {
+                            newPath = '/proxy' + newPath;
+                        }
+                        resHeaders.set(key, newPath);
+                    } catch {
+                        resHeaders.set(key, value);
+                    }
+                } else {
+                    resHeaders.set(key, value);
+                }
             }
         });
 
-        return new NextResponse(upstream.body, {
+        // Use arrayBuffer to safely handle body without double-parsing or encoding issues
+        const resBody = await upstream.arrayBuffer();
+
+        return new NextResponse(resBody, {
             status: upstream.status,
             headers: resHeaders,
         });
